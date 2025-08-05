@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoMail - Mass-Mail Dispatcher</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-header">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/echomail-logo.png') }}" alt="EchoMail Logo" class="logo">
+            <span class="logo-text">EchoMail</span>
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li class="active"><a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="{{ url_for('upload_page') }}"><i class="fas fa-upload"></i> Upload</a></li>
+                <li><a href="{{ url_for('history_page') }}"><i class="fas fa-history"></i> History</a></li>
+            </ul>
+        </nav>
+        <div class="header-actions">
+            {% if session.get('email') %}
+                <a href="{{ url_for('logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-paper-plane"></i> Mass-Mail Dispatcher</h1>
+            <p>Upload CSV file with email addresses and send mass emails efficiently</p>
+        </header>
+
+        <main>
+            <div class="welcome-section">
+                <h2><i class="fas fa-info-circle"></i> Welcome to EchoMail</h2>
+                <p>EchoMail is a powerful tool that allows you to send mass emails to a list of recipients. Upload a CSV file containing email addresses, validate them, and send personalized emails to your audience.</p>
+                
+                <div class="action-buttons">
+                    <a href="{{ url_for('upload_page') }}" class="btn-primary">
+                        <i class="fas fa-upload"></i> Upload CSV File
+                    </a>
+                </div>
+            </div>
+
+            <!-- Email Validation Results Section (initially hidden) -->
+            <section id="validationResults" class="results-section hidden">
+                <div class="results-container">
+                    <div class="valid-emails">
+                        <h3><i class="fas fa-check"></i> Valid Emails (<span id="validCount">0</span>)</h3>
+                        <div class="email-list" id="validEmails">
+                            <!-- Valid emails will be displayed here -->
+                        </div>
+                    </div>
+                    <div class="invalid-emails">
+                        <h3><i class="fas fa-times"></i> Invalid Emails (<span id="invalidCount">0</span>)</h3>
+                        <div class="email-list" id="invalidEmails">
+                            <!-- Invalid emails will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Email Composer Section (initially hidden) -->
+            <section id="emailComposer" class="composer-section hidden">
+                <h2><i class="fas fa-edit"></i> Compose Email</h2>
+                <form id="emailForm" action="/send" method="POST">
+                    <div class="form-group">
+                        <label for="senderEmail"><i class="fas fa-user"></i> Your Email Address</label>
+                        <input type="email" id="senderEmail" name="senderEmail" placeholder="Enter your email address" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="senderApiKey"><i class="fas fa-key"></i> Your SendGrid API Key</label>
+                        <input type="password" id="senderApiKey" name="senderApiKey" placeholder="Enter your SendGrid API key" required>
+                        <small class="helper-text">You need to create a free SendGrid account and generate an API key to send emails.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="subject"><i class="fas fa-heading"></i> Subject</label>
+                        <input type="text" id="subject" name="subject" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="message"><i class="fas fa-envelope-open-text"></i> Message</label>
+                        <textarea id="message" name="message" rows="10" required></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary"><i class="fas fa-paper-plane"></i> Send Emails</button>
+                </form>
+            </section>
+
+            <!-- Status Section -->
+            <section id="statusSection" class="status-section hidden">
+                <div id="statusMessage"></div>
+                <div class="progress-container">
+                    <div id="progressBar" class="progress-bar"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 EchoMail | EXPOSYS Internship Project</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html> 

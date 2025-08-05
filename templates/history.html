@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload History - EchoMail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-header">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/echomail-logo.png') }}" alt="EchoMail Logo" class="logo">
+            <span class="logo-text">EchoMail</span>
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="{{ url_for('upload_page') }}"><i class="fas fa-upload"></i> Upload</a></li>
+                <li class="active"><a href="{{ url_for('history_page') }}"><i class="fas fa-history"></i> History</a></li>
+            </ul>
+        </nav>
+        <div class="header-actions">
+            {% if session.get('email') %}
+                <a href="{{ url_for('logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-history"></i> CSV Upload History</h1>
+            <p>See the history of all CSV files uploaded to EchoMail.</p>
+        </header>
+
+        <main>
+            <section id="historySection" class="history-section">
+                <div class="history-container">
+                    <table id="historyTable" class="history-table">
+                        <thead>
+                            <tr>
+                                <th>File Name</th>
+                                <th>Sent Date</th>
+                                <th>Valid Emails</th>
+                                <th>Invalid Emails</th>
+                                <th>Total</th>
+                                <th>Sent From</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- History entries will be added here -->
+                            <tr class="empty-history">
+                                <td colspan="6">No upload history yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 EchoMail | EXPOSYS Internship Project</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

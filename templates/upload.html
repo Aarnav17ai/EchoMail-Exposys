@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload CSV - EchoMail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-header">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/echomail-logo.png') }}" alt="EchoMail Logo" class="logo">
+            <span class="logo-text">EchoMail</span>
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a></li>
+                <li class="active"><a href="{{ url_for('upload_page') }}"><i class="fas fa-upload"></i> Upload</a></li>
+                <li><a href="{{ url_for('history_page') }}"><i class="fas fa-history"></i> History</a></li>
+            </ul>
+        </nav>
+        <div class="header-actions">
+            {% if session.get('email') %}
+                <a href="{{ url_for('logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-upload"></i> Upload CSV File</h1>
+            <p>Upload a CSV file with email addresses to validate and send emails</p>
+        </header>
+
+        <main>
+            <!-- File Upload Section -->
+            <section class="upload-section">
+                <h2><i class="fas fa-file-upload"></i> Upload Email List</h2>
+                <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+                    <div class="file-input-container">
+                        <input type="file" id="csvFile" name="csvFile" accept=".csv" required>
+                        <label for="csvFile"><i class="fas fa-file-csv"></i> Choose CSV File</label>
+                    </div>
+                    <div class="csv-requirements">
+                        <h3><i class="fas fa-info-circle"></i> CSV File Requirements</h3>
+                        <ul>
+                            <li>File must be in CSV format</li>
+                            <li>File should contain a column with "email" in its name</li>
+                            <li>Each row should represent one recipient</li>
+                        </ul>
+                        <div class="csv-example">
+                            <p>Example CSV format:</p>
+                            <pre>name,email,department
+John Doe,john@example.com,Marketing
+Jane Smith,jane@example.com,Sales</pre>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary"><i class="fas fa-check-circle"></i> Upload & Validate</button>
+                </form>
+            </section>
+
+            <!-- Email Validation Results Section (initially hidden) -->
+            <section id="validationResults" class="results-section hidden">
+                <div class="results-container">
+                    <div class="valid-emails">
+                        <h3><i class="fas fa-check"></i> Valid Emails (<span id="validCount">0</span>)</h3>
+                        <div class="email-list" id="validEmails">
+                            <!-- Valid emails will be displayed here -->
+                        </div>
+                    </div>
+                    <div class="invalid-emails">
+                        <h3><i class="fas fa-times"></i> Invalid Emails (<span id="invalidCount">0</span>)</h3>
+                        <div class="email-list" id="invalidEmails">
+                            <!-- Invalid emails will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Email Composer Section (initially hidden) -->
+            <section id="emailComposer" class="composer-section hidden">
+                <h2><i class="fas fa-edit"></i> Compose Email</h2>
+                <form id="emailForm" action="/send" method="POST">
+                    <div class="form-group">
+                        <label for="senderEmail"><i class="fas fa-reply"></i> Your Email Address</label>
+                        <input type="email" id="senderEmail" name="senderEmail" placeholder="Enter email for replies" required>
+                        <small class="helper-text">Replies to your emails will go to this address. (Required)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="subject"><i class="fas fa-heading"></i> Subject</label>
+                        <input type="text" id="subject" name="subject" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="message"><i class="fas fa-envelope-open-text"></i> Message</label>
+                        <textarea id="message" name="message" rows="10"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="attachments"><i class="fas fa-paperclip"></i> Attachments</label>
+                        <div class="file-upload-container">
+                            <div class="file-upload-box">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span>Click to upload or drag and drop</span>
+                                <input type="file" id="attachments" name="attachments" multiple>
+                            </div>
+                            <div id="filePreviews" class="file-previews">
+                                <!-- Selected files will be displayed here -->
+                            </div>
+                        </div>
+                        <small class="helper-text">Max 10MB total attachment size. Max 5 files.</small>
+                    </div>
+                    <div class="form-actions">
+                        <a href="{{ url_for('index') }}" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back to Home</a>
+                        <button type="submit" class="btn-primary"><i class="fas fa-paper-plane"></i> Send Emails</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Status Section -->
+            <section id="statusSection" class="status-section hidden">
+                <div id="statusMessage"></div>
+                <div class="progress-container">
+                    <div id="progressBar" class="progress-bar"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 EchoMail | EXPOSYS Internship Project</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
