@@ -16,18 +16,22 @@
             <img src="{{ url_for('static', filename='images/echomail-logo.png') }}" alt="EchoMail Logo" class="logo">
             <span class="logo-text">EchoMail</span>
         </div>
-        <nav class="main-nav">
+
+        <!-- Hamburger Button for Mobile -->
+        <button class="navbar-toggle" id="navbarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <nav class="main-nav" id="navbarLinks">
             <ul>
                 <li class="active"><a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a></li>
                 <li><a href="{{ url_for('upload_page') }}"><i class="fas fa-upload"></i> Upload</a></li>
                 <li><a href="{{ url_for('history_page') }}"><i class="fas fa-history"></i> History</a></li>
+                {% if session.get('email') %}
+                    <li><a href="{{ url_for('logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                {% endif %}
             </ul>
         </nav>
-        <div class="header-actions">
-            {% if session.get('email') %}
-                <a href="{{ url_for('logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            {% endif %}
-        </div>
     </div>
     
     <div class="container">
@@ -107,4 +111,4 @@
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
-</html> 
+</html>

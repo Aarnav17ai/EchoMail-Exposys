@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload CSV - EchoMail</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -16,7 +14,10 @@
             <img src="{{ url_for('static', filename='images/echomail-logo.png') }}" alt="EchoMail Logo" class="logo">
             <span class="logo-text">EchoMail</span>
         </div>
-        <nav class="main-nav">
+        <button class="navbar-toggle" id="navbarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <nav class="main-nav" id="navbarLinks">
             <ul>
                 <li><a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a></li>
                 <li class="active"><a href="{{ url_for('upload_page') }}"><i class="fas fa-upload"></i> Upload</a></li>
@@ -37,7 +38,6 @@
         </header>
 
         <main>
-            <!-- File Upload Section -->
             <section class="upload-section">
                 <h2><i class="fas fa-file-upload"></i> Upload Email List</h2>
                 <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
@@ -63,25 +63,21 @@ Jane Smith,jane@example.com,Sales</pre>
                 </form>
             </section>
 
-            <!-- Email Validation Results Section (initially hidden) -->
             <section id="validationResults" class="results-section hidden">
                 <div class="results-container">
                     <div class="valid-emails">
                         <h3><i class="fas fa-check"></i> Valid Emails (<span id="validCount">0</span>)</h3>
                         <div class="email-list" id="validEmails">
-                            <!-- Valid emails will be displayed here -->
-                        </div>
+                            </div>
                     </div>
                     <div class="invalid-emails">
                         <h3><i class="fas fa-times"></i> Invalid Emails (<span id="invalidCount">0</span>)</h3>
                         <div class="email-list" id="invalidEmails">
-                            <!-- Invalid emails will be displayed here -->
-                        </div>
+                            </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Email Composer Section (initially hidden) -->
             <section id="emailComposer" class="composer-section hidden">
                 <h2><i class="fas fa-edit"></i> Compose Email</h2>
                 <form id="emailForm" action="/send" method="POST">
@@ -107,8 +103,7 @@ Jane Smith,jane@example.com,Sales</pre>
                                 <input type="file" id="attachments" name="attachments" multiple>
                             </div>
                             <div id="filePreviews" class="file-previews">
-                                <!-- Selected files will be displayed here -->
-                            </div>
+                                </div>
                         </div>
                         <small class="helper-text">Max 10MB total attachment size. Max 5 files.</small>
                     </div>
@@ -119,7 +114,6 @@ Jane Smith,jane@example.com,Sales</pre>
                 </form>
             </section>
 
-            <!-- Status Section -->
             <section id="statusSection" class="status-section hidden">
                 <div id="statusMessage"></div>
                 <div class="progress-container">
@@ -132,7 +126,7 @@ Jane Smith,jane@example.com,Sales</pre>
             <p>&copy; 2025 EchoMail | EXPOSYS Internship Project</p>
         </footer>
     </div>
-
+    
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
