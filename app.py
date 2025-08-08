@@ -12,6 +12,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory,
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from functools import wraps
+from flask_cors import CORS
 
 # OAuth and Google Authentication
 from authlib.integrations.flask_client import OAuth
@@ -26,10 +27,11 @@ load_dotenv()
 
 # Configure Flask app
 app = Flask(__name__)
+app.config['HISTORY_FILE'] = 'csv_history.json'
+CORS(app, resources={r"/*": {"origins": "*"}})
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'csv'}
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload size
-app.config['HISTORY_FILE'] = 'csv_history.json'
 app.secret_key = os.environ.get('SECRET_KEY', 'supersecretkey')
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours in seconds
 
@@ -337,23 +339,24 @@ logger.info(f"Sending emails from: {FROM_EMAIL}")
 # CSV history functions
 def get_csv_history():
     """Get the CSV upload history from JSON file"""
-    if os.path.exists(app.config['HISTORY_FILE']):
-        try:
-            # Load users as a list of dictionaries
+    path = app.config['HISTORY_FILE']
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, 'r') as f:
             history_data = json.load(f)
-            if not isinstance(history_data, list):
-                return []
-            return history_data
-        except json.JSONDecodeError:
-            logger.error("Error decoding history file, returning empty history")
+        if not isinstance(history_data, list):
             return []
-    else:
+        return history_data
+    except json.JSONDecodeError:
+        logger.error("Error decoding history file, returning empty history")
         return []
 
 def save_csv_history(history):
     """Save the CSV upload history to JSON file"""
     with open(app.config['HISTORY_FILE'], 'w') as f:
         json.dump(history, f, indent=2)
+
 
 def add_csv_to_history(filename, original_filename, valid_count, invalid_count, sender_email=None):
     """Add a CSV file to the upload history"""
@@ -368,8 +371,8 @@ def add_csv_to_history(filename, original_filename, valid_count, invalid_count, 
         'valid_emails': valid_count,
         'invalid_emails': invalid_count,
         'total_emails': valid_count + invalid_count,
-        'sent_from': sender_email if sender_email else FROM_EMAIL,
-        'user_email': session.get('email') # Link history to logged-in user
+        'sent_from': sender_email,
+        'user_email': session.get('email')  # Link history to logged-in user
     }
     
     # Add to history and save
@@ -377,6 +380,7 @@ def add_csv_to_history(filename, original_filename, valid_count, invalid_count, 
     save_csv_history(history)
     
     return new_entry
+
 
 # Helper function to check if file extension is allowed
 def allowed_file(filename):
@@ -410,63 +414,43 @@ def is_valid_email(email):
 # Helper function to send email using SendGrid API
 def send_email_with_sendgrid(to_email, subject, message_text, from_email=None, api_key=None, attachments=None):
     """
-    Send an email using SendGrid API
-    
-    Args:
-        to_email (str): Recipient email address
-        subject (str): Email subject
-        message_text (str): Email body text
-        from_email (str, optional): Sender email address. Defaults to FROM_EMAIL.
-        api_key (str, optional): SendGrid API key. Defaults to SENDGRID_API_KEY.
-        attachments (list, optional): List of file attachments. Each attachment should be a dict with:
-            - 'filename': Name of the file
-            - 'content': Base64 encoded content
-            - 'type': MIME type of the file
-            - 'disposition': Either 'attachment' or 'inline'
-            - 'content_id': Optional content ID for inline images
-            
-    Returns:
-        tuple: (success, status_code, response_text)
+    Send an email using SendGrid API.
+    Always sends from the verified sender, sets reply-to to the provided form email.
     """
-    # Use provided sender email or default
-    sender_email = from_email if from_email else FROM_EMAIL
-    
-    # Use provided API key or default
-    sender_api_key = api_key if api_key else SENDGRID_API_KEY
-    
+    # Always use your verified SendGrid sender for the 'from' field
+    verified_sender = FROM_EMAIL
+
+    # Always use your verified API key
+    sender_api_key = SENDGRID_API_KEY
+
     # Create email data
     email_data = {
         "personalizations": [
             {
-                "to": [
-                    {
-                        "email": to_email
-                    }
-                ],
+                "to": [{"email": to_email}],
                 "subject": subject
             }
         ],
-        "from": {
-            "email": sender_email
-        },
+        "from": {"email": verified_sender},
+        "reply_to": {"email": from_email} if from_email else {"email": verified_sender},
         "content": [
             {
-                "type": "text/plain",
+                "type": "text/html",
                 "value": message_text
             }
         ]
     }
-    
+
     # Add attachments if any
     if attachments:
         email_data['attachments'] = attachments
-    
+
     # Set up headers
     headers = {
         "Authorization": f"Bearer {sender_api_key}",
         "Content-Type": "application/json"
     }
-    
+
     try:
         # Make the API request
         response = requests.post(
@@ -474,14 +458,17 @@ def send_email_with_sendgrid(to_email, subject, message_text, from_email=None, a
             headers=headers,
             data=json.dumps(email_data)
         )
-        
+
         # Check if successful
         success = 200 <= response.status_code < 300
-        return success, response.status_code, response.text
-    
+        if success:
+            return True, None
+        else:
+            return False, f"{response.status_code} - {response.text}"
+
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
-        return False, 0, str(e)
+        return False, str(e)
 
 # Routes
 def login_required(f):
@@ -644,126 +631,97 @@ def upload_file():
 @app.route('/send', methods=['POST'])
 @login_required
 def send_emails():
-    """
-    Send emails to valid recipients with optional attachments
-    
-    Returns:
-        JSON response with sending results
-    """
+    sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
+
+    logger.debug(f"Received /send POST with form keys: {list(request.form.keys())}")
+    logger.debug(f"Form values: {dict(request.form)}")
+    logger.debug(f"File keys: {list(request.files.keys())}")
+
     try:
-        # Check if request has form data (for file uploads)
-        if request.files:
-            # Get form data
-            sender_email = request.form.get('senderEmail')
-            sender_api_key = request.form.get('senderApiKey')
-            subject = request.form.get('subject', '')
-            message = request.form.get('message', '')
+        # 🔒 Ensure API key exists
+        if not sendgrid_api_key:
+            logger.error("SendGrid API key not configured")
+            return jsonify({
+                'success': False, 
+                'message': 'SendGrid API key not configured. Please set SENDGRID_API_KEY in .env file.'
+            })
+
+        # 📦 Get form data
+        sender_email = request.form.get('senderEmail')  # will be reply-to
+        subject = request.form.get('subject', '')
+        message = request.form.get('message', '')
+        try:
             emails = json.loads(request.form.get('emails', '[]'))
-            
-            # Process file attachments
-            attachments = []
-            for file_key in request.files:
-                file = request.files[file_key]
-                if file.filename:  # Only process if file was selected
-                    file_content = base64.b64encode(file.read()).decode('utf-8')
-                    attachments.append({
-                        'filename': file.filename,
-                        'content': file_content,
-                        'type': file.content_type or 'application/octet-stream',
-                        'disposition': 'attachment'
-                    })
-        else:
-            # Handle JSON data (for backward compatibility)
-            data = request.get_json()
-            if not data:
-                logger.error("No data received in request")
-                return jsonify({'success': False, 'message': 'No data received'})
-                
-            subject = data.get('subject', '')
-            message = data.get('message', '')
-            emails = data.get('emails', [])
-            sender_email = data.get('senderEmail')
-            sender_api_key = data.get('senderApiKey')
-            attachments = data.get('attachments', [])
-        
-        # Check if we have all required data (subject/message only required if no attachments)
+        except Exception as e:
+            logger.error(f"Failed to parse 'emails' from form: {e}")
+            return jsonify({'success': False, 'message': 'Malformed email data'}), 400
+
+        filename = request.form.get('filename')
+        original_filename = request.form.get('original_filename')
+        valid_count = int(request.form.get('valid_count', 0))
+        invalid_count = int(request.form.get('invalid_count', 0))
+        attachments = request.files.getlist("attachments")
+
+        # ✅ Validation check
         if not emails or (not subject and not message and not attachments):
             logger.warning("Missing required data for sending emails")
             return jsonify({
                 'success': False, 
                 'message': 'Missing required data (emails and either subject/message or attachments)'
             })
-        
-        # Check if sender email and API key are provided
-        use_custom_sender = sender_email and sender_api_key
-        
-        # If not using custom sender, check if default SendGrid API key is configured
-        if not use_custom_sender and not SENDGRID_API_KEY:
-            logger.error("SendGrid API key not configured")
-            return jsonify({
-                'success': False, 
-                'message': 'SendGrid API key not configured. Please set SENDGRID_API_KEY in .env file or provide your own.'
-            })
-        
+
         logger.info(f"Attempting to send emails to {len(emails)} recipients")
-        
-        # Send email to each recipient
+
         successful_sends = 0
         failed_sends = 0
-        
+
         for email in emails:
             try:
                 logger.debug(f"Sending email to {email}")
-                
-                # Send the email using our helper function with attachments
-                if use_custom_sender:
-                    success, status_code, response_text = send_email_with_sendgrid(
-                        email, 
-                        subject or '(No subject)', 
-                        message or '(No message)', 
-                        from_email=sender_email, 
-                        api_key=sender_api_key,
-                        attachments=attachments
-                    )
-                else:
-                    success, status_code, response_text = send_email_with_sendgrid(
-                        email, 
-                        subject or '(No subject)', 
-                        message or '(No message)',
-                        attachments=attachments
-                    )
-                
-                # Log the response
-                logger.debug(f"SendGrid response: {status_code} - {response_text}")
-                
-                # Check if email was sent successfully
+
+                success, error_message = send_email_with_sendgrid(
+                    to_email=email,                   # ✅ recipient
+                    subject=subject,
+                    message_text=message,
+                    from_email=sender_email,          # ✅ reply-to address
+                    attachments=[
+                        {
+                            'filename': file.filename,
+                            'content': base64.b64encode(file.read()).decode('utf-8'),
+                            'type': file.content_type or 'application/octet-stream',
+                            'disposition': 'attachment'
+                        }
+                        for file in attachments if file.filename
+                    ]
+                )
+
                 if success:
                     successful_sends += 1
                     logger.debug(f"Email sent successfully to {email}")
                 else:
                     failed_sends += 1
-                    logger.warning(f"Failed to send email to {email}: {status_code} - {response_text}")
-                    
+                    logger.warning(f"Failed to send email to {email}: {error_message}")
+
             except Exception as e:
                 failed_sends += 1
                 logger.error(f"Error preparing email for {email}: {str(e)}")
-        
-        # Add to CSV history if filename is provided and emails were attempted to be sent
+
+        # 🧾 Add to history if metadata is present
         history_entry = None
-        if (successful_sends + failed_sends > 0) and 'filename' in data and 'original_filename' in data and 'valid_count' in data and 'invalid_count' in data:
-            # Determine which sender email to use
-            actual_sender_email = sender_email if use_custom_sender else FROM_EMAIL
-            
-            history_entry = add_csv_to_history(
-                filename=data['filename'],
-                original_filename=data['original_filename'],
-                valid_count=data['valid_count'],
-                invalid_count=data['invalid_count'],
-                sender_email=actual_sender_email
-            )
-            logger.info(f"Added to history after sending: {history_entry}")
-        
-        # Return the results
+        if filename and original_filename:
+            try:
+                history_entry = add_csv_to_history(
+                    filename=filename,
+                    original_filename=original_filename,
+                    valid_count=valid_count,
+                    invalid_count=invalid_count,
+                    sender_email=sender_email
+                )
+                logger.info(f"Added to history after sending: {history_entry}")
+            except Exception as e:
+                logger.error(f"Error adding to history: {str(e)}", exc_info=True)
+
+        # ✅ Return results
         result = {
             'success': True,
             'message': f'Sent {successful_sends} emails successfully. {failed_sends} failed.',
@@ -773,7 +731,7 @@ def send_emails():
         }
         logger.info(f"Email sending complete: {result}")
         return jsonify(result)
-        
+
     except Exception as e:
         logger.error(f"Error in send_emails: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)})

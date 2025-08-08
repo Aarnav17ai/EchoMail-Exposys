@@ -799,23 +799,219 @@ footer {
 }
 
 @keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
+from { opacity: 1; }
+to { opacity: 0; }
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
-    .results-container {
+@media (max-width: 992px) {
+/* Tablet styles */
+.container {
+width: 95%;
+margin: 10px auto;
+padding: 10px;
+}
+.app-header {
+flex-direction: column;
+padding: 10px 15px;
+}
+.logo-container {
+margin-bottom: 10px;
+}
+.main-nav ul {
+flex-wrap: wrap;
+justify-content: center;
+}
+.results-container {
+flex-direction: column;
+}
+.welcome-section, .composer-section {
+padding: 15px;
+}
+.form-group {
+margin-bottom: 15px;
+}
+.btn-primary, .btn-secondary {
+width: 100%;
+margin: 5px 0;
+}
+}
+
+@media (max-width: 576px) {
+/* Mobile styles */
+html {
+font-size: 14px;
+}
+.container {
+width: 100%;
+margin: 0;
+border-radius: 0;
+padding: 10px;
+}
+header {
+text-align: center;
+padding: 15px 0;
+}
+.main-nav ul {
+flex-direction: column;
+align-items: center;
+}
+.main-nav li {
+margin: 5px 0;
+}
+.header-actions {
+margin-top: 10px;
+width: 100%;
+}
+.btn-logout {
+display: block;
+text-align: center;
+width: 100%;
+}
+.results-container {
+flex-direction: column;
+}
+.valid-emails, .invalid-emails {
+width: 100%;
+margin: 5px 0;
+}
+.email-list {
+max-height: 150px;
+}
+.form-actions {
+flex-direction: column;
+}
+.file-upload-box {
+padding: 20px 10px;
+}
+.file-previews {
+grid-template-columns: 1fr;
+}
+.history-table {
+display: block;
+overflow-x: auto;
+}
+.history-table th, 
+.history-table td {
+padding: 8px;
+font-size: 0.9rem;
+}
+}
+
+/* Ensure all form inputs are mobile-friendly */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+width: 100%;
+max-width: 100%;
+box-sizing: border-box;
+}
+
+/* Make buttons touch-friendly on mobile */
+button, 
+a.btn-primary, 
+a.btn-secondary,
+.btn-logout {
+min-height: 44px;
+padding: 10px 20px;
+}
+
+
+/* =========================================
+   MOBILE RESPONSIVE FIXES
+   ========================================= */
+   @media (max-width: 768px) {
+    body {
+        font-size: 14px;
+        padding: 10px;
+    }
+
+    header, footer {
+        text-align: center;
+    }
+
+    .container {
+        padding: 10px;
+        max-width: 100%;
+    }
+
+    /* Stack form fields vertically */
+    form, .form-row {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="file"],
+    textarea,
+    select,
+    button {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Make buttons full-width */
+    .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Adjust file upload box */
+    .file-upload-box {
+        flex-direction: column;
+        text-align: center;
+        padding: 15px;
+    }
+
+    /* Email results & composer stacking */
+    #validationResults, #emailComposer {
         flex-direction: column;
     }
-    
-    .container {
-        padding: 15px;
-        margin: 15px;
-        width: auto;
+
+    /* History table responsiveness */
+    table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
-    
+
+    table th, table td {
+        white-space: nowrap;
+    }
+
+    /* Reduce padding in sections */
     section {
-        padding: 15px;
+        padding: 10px;
+    }
+
+    /* Toast notifications size fix */
+    #toast-container {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        font-size: 13px;
+    }
+
+    h1, h2, h3 {
+        font-size: 1.2rem;
+    }
+
+    .btn {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+
+    input, textarea, select {
+        font-size: 0.9rem;
     }
 }

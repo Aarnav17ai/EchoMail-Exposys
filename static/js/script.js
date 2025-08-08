@@ -29,115 +29,160 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize animations
     initializeAnimations();
 
-    // Handle file upload preview
+   // Handle file upload preview
     const attachmentInput = document.getElementById('attachments');
     const filePreviews = document.getElementById('filePreviews');
-    
+
     if (attachmentInput && filePreviews) {
-        attachmentInput.addEventListener('change', handleFileSelect);
-        
-        // Add drag and drop support
-        const dropZone = document.querySelector('.file-upload-box');
-        if (dropZone) {
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, preventDefaults, false);
-            });
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone.addEventListener(eventName, highlight, false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, unhighlight, false);
-            });
-            
-            dropZone.addEventListener('drop', handleDrop, false);
-        }
-    }
-    
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-    
-    function highlight() {
-        document.querySelector('.file-upload-box').classList.add('highlight');
-    }
-    
-    function unhighlight() {
-        document.querySelector('.file-upload-box').classList.remove('highlight');
-    }
-    
-    function handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        handleFiles(files);
-    }
-    
-    function handleFileSelect(e) {
-        handleFiles(this.files);
-    }
-    
-    function handleFiles(files) {
-        [...files].forEach(file => {
-            if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                showToast(`File ${file.name} is too large. Max size is 10MB.`, 'error');
-                return;
-            }
-            
-            const preview = createFilePreview(file);
-            filePreviews.appendChild(preview);
+         attachmentInput.addEventListener('change', handleFileSelect);
+
+    // Add drag and drop support
+    const dropZone = document.querySelector('.file-upload-box');
+    if (dropZone) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
         });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
     }
-    
-    function createFilePreview(file) {
-        const preview = document.createElement('div');
-        preview.className = 'file-preview';
-        preview.dataset.fileName = file.name;
-        
-        const fileIcon = document.createElement('i');
-        fileIcon.className = getFileIconClass(file);
-        
-        const fileName = document.createElement('span');
-        fileName.className = 'file-name';
-        fileName.textContent = file.name;
-        
-        const removeBtn = document.createElement('span');
-        removeBtn.className = 'remove-file';
-        removeBtn.innerHTML = '&times;';
-        removeBtn.onclick = () => preview.remove();
-        
-        preview.appendChild(fileIcon);
-        preview.appendChild(fileName);
-        preview.appendChild(removeBtn);
-        
-        return preview;
-    }
-    
-    function getFileIconClass(file) {
-        const fileType = file.type.split('/')[0];
-        const fileExt = file.name.split('.').pop().toLowerCase();
-        
-        switch(fileType) {
-            case 'image':
-                return 'fas fa-file-image';
-            case 'application':
-                if (fileExt === 'pdf') return 'fas fa-file-pdf';
-                if (['doc', 'docx'].includes(fileExt)) return 'fas fa-file-word';
-                if (['xls', 'xlsx'].includes(fileExt)) return 'fas fa-file-excel';
-                if (['ppt', 'pptx'].includes(fileExt)) return 'fas fa-file-powerpoint';
-                if (['zip', 'rar', '7z'].includes(fileExt)) return 'fas fa-file-archive';
-                return 'fas fa-file-alt';
-            default:
-                return 'fas fa-file';
+}
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+function highlight() {
+    document.querySelector('.file-upload-box').classList.add('highlight');
+}
+
+function unhighlight() {
+    document.querySelector('.file-upload-box').classList.remove('highlight');
+}
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+
+    attachmentInput.files = files; // Ensure FormData includes dropped files
+    displaySelectedFiles(files);
+}
+
+function handleFileSelect(e) {
+    displaySelectedFiles(this.files);
+}
+
+function displaySelectedFiles(files) {
+    filePreviews.innerHTML = ''; // Clear old previews
+
+    [...files].forEach(file => {
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            showToast(`File ${file.name} is too large. Max size is 10MB.`, 'error');
+            return;
         }
+
+        const preview = createFilePreview(file);
+        filePreviews.appendChild(preview);
+    });
+}
+
+function createFilePreview(file) {
+    const preview = document.createElement('div');
+    preview.className = 'file-preview';
+    preview.dataset.fileName = file.name;
+
+    const fileIcon = document.createElement('i');
+    fileIcon.className = getFileIconClass(file);
+
+    const fileName = document.createElement('span');
+    fileName.className = 'file-name';
+    fileName.textContent = file.name;
+
+    const removeBtn = document.createElement('span');
+    removeBtn.className = 'remove-file';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.onclick = () => preview.remove();
+
+    preview.appendChild(fileIcon);
+    preview.appendChild(fileName);
+    preview.appendChild(removeBtn);
+
+    return preview;
+}
+
+function getFileIconClass(file) {
+    const fileType = file.type.split('/')[0];
+    const fileExt = file.name.split('.').pop().toLowerCase();
+
+    switch (fileType) {
+        case 'image':
+            return 'fas fa-file-image';
+        case 'application':
+            if (fileExt === 'pdf') return 'fas fa-file-pdf';
+            if (['doc', 'docx'].includes(fileExt)) return 'fas fa-file-word';
+            if (['xls', 'xlsx'].includes(fileExt)) return 'fas fa-file-excel';
+            if (['ppt', 'pptx'].includes(fileExt)) return 'fas fa-file-powerpoint';
+            if (['zip', 'rar', '7z'].includes(fileExt)) return 'fas fa-file-archive';
+            return 'fas fa-file-alt';
+        default:
+            return 'fas fa-file';
     }
-    
+}
+
     // Check if we're on the home page with history section
     if (historySection) {
         // Load CSV upload history
         loadHistory();
     }
+    
+    // Function to handle file input change
+    function setupFileInputChangeHandler() {
+        const csvFileInput = document.getElementById('csvFile');
+        if (csvFileInput) {
+            // Update label immediately if a file is already selected (on page reload)
+            if (csvFileInput.files.length > 0) {
+                const fileName = csvFileInput.files[0].name;
+                const fileLabel = csvFileInput.nextElementSibling;
+                if (fileLabel) {
+                    fileLabel.innerHTML = `<i class="fas fa-file-csv"></i> ${fileName}`;
+                }
+            }
+            
+            // Add change event listener
+            csvFileInput.addEventListener('change', function() {
+                const fileName = this.files[0] ? this.files[0].name : 'Choose CSV File';
+                const fileLabel = this.nextElementSibling;
+                if (fileLabel) {
+                    fileLabel.innerHTML = `<i class="fas fa-file-csv"></i> ${fileName}`;
+                }
+                
+                // Reset validation data
+                validEmailsList = [];
+                window.currentFileData = null;
+                
+                // Clear the UI
+                if (validEmails) validEmails.innerHTML = '';
+                if (invalidEmails) invalidEmails.innerHTML = '';
+                if (validCount) validCount.textContent = '0';
+                if (invalidCount) invalidCount.textContent = '0';
+                
+                // Hide the validation results and email composer
+                if (validationResults) validationResults.classList.add('hidden');
+                if (emailComposer) emailComposer.classList.add('hidden');
+            });
+        }
+    }
+    
+    // Initialize file input change handler
+    setupFileInputChangeHandler();
     
     // Handle file upload form submission
     if (uploadForm) {
@@ -153,36 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // File input label update and clear previous results
-            // File input label update
-            const csvFileInput = document.getElementById('csvFile');
-            if (csvFileInput) {
-                // Remove any existing change event listeners to prevent duplicates
-                const newInput = csvFileInput.cloneNode(true);
-                csvFileInput.parentNode.replaceChild(newInput, csvFileInput);
-                
-                // Add the change event listener to the new input
-                newInput.addEventListener('change', function() {
-                    const fileName = this.files[0] ? this.files[0].name : 'Choose CSV File';
-                    const fileLabel = this.nextElementSibling;
-                    fileLabel.innerHTML = `<i class="fas fa-file-csv"></i> ${fileName}`;
-                    
-                    // Reset validation data
-                    validEmailsList = [];
-                    window.currentFileData = null;
-                    
-                    // Clear the UI
-                    validEmails.innerHTML = '';
-                    invalidEmails.innerHTML = '';
-                    validCount.textContent = '0';
-                    invalidCount.textContent = '0';
-                    
-                    // Hide the validation results and email composer
-                    validationResults.classList.add('hidden');
-                    emailComposer.classList.add('hidden');
-                });
-            }
-            
             // Create FormData object
             const formData = new FormData();
             formData.append('csvFile', file);
@@ -192,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusMessage.textContent = 'Uploading and validating emails...';
             progressBar.style.width = '50%';
             
-            console.log('Sending email data:', JSON.stringify(formData));
+            console.log('Sending email data:', Array.from(formData.entries()));
             
             // Send the file to the server
             fetch('/upload', {
@@ -316,13 +331,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Get form values
             const senderEmail = document.getElementById('senderEmail').value;
-            const senderApiKey = document.getElementById('senderApiKey').value;
             const subject = document.getElementById('subject').value;
             const message = document.getElementById('message').value;
             const attachmentInput = document.getElementById('attachments');
             
             // Check required fields (subject/message only required if no attachments)
-            if (!senderEmail || !senderApiKey || (!subject && !message && attachmentInput.files.length === 0)) {
+            if (!senderEmail || (!subject && !message && attachmentInput.files.length === 0)) {
                 showToast('Please fill in required fields', 'error');
                 return;
             }
@@ -337,7 +351,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create FormData for file uploads
             const formData = new FormData();
             formData.append('senderEmail', senderEmail);
-            formData.append('senderApiKey', senderApiKey);
             formData.append('subject', subject || '');
             formData.append('message', message || '');
             formData.append('emails', JSON.stringify(validEmailsList));
@@ -364,64 +377,55 @@ document.addEventListener('DOMContentLoaded', function() {
             // Send the email data to the server
             fetch('/send', {
                 method: 'POST',
-                body: formData  // Let the browser set Content-Type with boundary
+                body: formData
             })
-            .then(response => {
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-                
+            .then(async response => {
+                const contentType = response.headers.get('Content-Type') || '';
+            
                 if (!response.ok) {
-                    return response.text().then(text => {
-                        console.log('Error response body:', text);
-                        throw new Error('Server error: ' + response.status + ' ' + response.statusText + ' - ' + text);
-                    });
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} ${response.statusText} - ${errorText}`);
                 }
-                return response.json();
+            
+                if (!contentType.includes('application/json')) {
+                    const raw = await response.text();
+                    console.error('Non-JSON response:', raw);
+                    throw new Error(`Expected JSON but got ${contentType}`);
+                }
+                
+                console.log('Response URL:', response.url);
+                return response.json();  // ✅ Only run if JSON is confirmed
+                
             })
             .then(data => {
-                // Update progress
                 progressBar.style.width = '100%';
-                
-                console.log('Response data:', data);
-                
-                // Process the response data
+            
                 if (data.success) {
-                    // Update status message
                     statusMessage.textContent = 'Emails sent successfully!';
-                    
-                    // Show success message
                     showToast(`Sent ${data.successful_sends} emails successfully!`, 'success');
-                    
-                    // Reset the form
                     emailForm.reset();
-                    
-                    // Refresh history after sending emails
                     loadHistory();
-                    
-                    // Clear the current file data
                     window.currentFileData = null;
-                    
-                    // Hide the email composer after a delay
                     setTimeout(() => {
                         emailComposer.style.opacity = '0';
                         setTimeout(() => {
                             emailComposer.classList.add('hidden');
                         }, 500);
-                        
                         statusSection.classList.add('hidden');
                         progressBar.style.width = '0%';
                     }, 3000);
                 } else {
-                    // Show error message
                     statusMessage.textContent = 'Error: ' + data.message;
                     statusSection.classList.add('error');
                     showToast('Error: ' + data.message, 'error');
                 }
             })
+            
             .catch(error => {
                 console.error('Fetch Error:', error);
                 statusMessage.textContent = 'Error: ' + error.message;
                 statusSection.classList.add('error');
+                showToast('Error: ' + error.message, 'error'); 
             });
         });
     }
