@@ -929,7 +929,7 @@ padding: 10px 20px;
     justify-content: space-between; /* Aligns logo and nav to opposite ends */
     align-items: center;
     padding: 10px 20px;
-    background-color: #2c3e50; /* Adjust color as needed */
+    background-color: #0b182c; /* Adjust color as needed */
     color: white;
     position: relative; /* Needed for positioning the mobile menu */
 }
@@ -997,7 +997,7 @@ padding: 10px 20px;
         top: 100%; /* Position it right below the header */
         left: 0;
         width: 100%;
-        background-color: #34495e; /* Background for the dropdown menu */
+        background-color: #0b182c; /* Background for the dropdown menu */
     }
     
     /* This class is added by JavaScript to show the menu */
@@ -1014,7 +1014,7 @@ padding: 10px 20px;
     .main-nav li {
         width: 100%;
         text-align: center;
-        border-top: 1px solid #4a627a;
+        border-top: 1px solid #0b182c;
     }
 
     .main-nav li:first-child {

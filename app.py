@@ -5,10 +5,9 @@ import base64
 import pandas as pd
 import logging
 import requests
-import json
 import datetime
 import hashlib
-from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from functools import wraps
@@ -19,7 +18,7 @@ from authlib.integrations.flask_client import OAuth
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
@@ -88,6 +87,7 @@ except Exception as e:
     raise
 
 USERS_FILE = 'users.json'
+HISTORY_FILE = "csv_history.json"
 
 # User management functions (JSON file-based)
 def load_users():
