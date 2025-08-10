@@ -7,7 +7,8 @@ import logging
 import requests
 import datetime
 import hashlib
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+import tempfile
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash , json
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from functools import wraps
@@ -15,6 +16,12 @@ from flask_cors import CORS
 
 # OAuth and Google Authentication
 from authlib.integrations.flask_client import OAuth
+
+try:
+    import fcntl
+    _HAS_FCNTL = True
+except Exception:
+    _HAS_FCNTL = False
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, 
@@ -26,13 +33,26 @@ load_dotenv()
 
 # Configure Flask app
 app = Flask(__name__)
-app.config['HISTORY_FILE'] = 'csv_history.json'
+# ✅ Ensure data directory exists
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# ✅ Store history and users in fixed location
+USERS_FILE = os.path.join(DATA_DIR, 'users.json')
+app.config['HISTORY_FILE'] = os.path.join(DATA_DIR, 'csv_history.json')
+
+# Flask configs
 CORS(app, resources={r"/*": {"origins": "*"}})
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'csv'}
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload size
 app.secret_key = os.environ.get('SECRET_KEY', 'supersecretkey')
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours in seconds
+
+# Debug logs to confirm fixed paths
+logger.info(f"USERS_FILE path: {USERS_FILE}")
+logger.info(f"HISTORY_FILE path: {app.config['HISTORY_FILE']}")
+
 
 # Load configuration from environment variables
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
@@ -86,34 +106,133 @@ except Exception as e:
     logger.error(f"Error configuring OAuth: {str(e)}")
     raise
 
-USERS_FILE = 'users.json'
-HISTORY_FILE = "csv_history.json"
+def ensure_file_exists(path):
+    """
+    Ensure the JSON file exists and contains a valid empty list if new.
+    Creates directories as needed.
+    """
+    if not os.path.exists(path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        # create an empty list atomically
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(path))
+        try:
+            with os.fdopen(tmp_fd, 'w') as tf:
+                json.dump([], tf, indent=2)
+                tf.flush()
+                os.fsync(tf.fileno())
+            os.replace(tmp_path, path)
+        finally:
+            if os.path.exists(tmp_path):
+                try: os.remove(tmp_path)
+                except Exception: pass
+
+def _atomic_read_json(path):
+    """Read JSON from path safely. Returns Python object (or [] on problems)."""
+    ensure_file_exists(path)
+    try:
+        with open(path, 'r') as f:
+            if _HAS_FCNTL:
+                try:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+                except Exception:
+                    pass
+            data = json.load(f)
+            if _HAS_FCNTL:
+                try:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                except Exception:
+                    pass
+            if not isinstance(data, list):
+                # Prefer to return an empty list rather than crash; caller can reset file.
+                return []
+            return data
+    except json.JSONDecodeError:
+        # Corrupt file — return empty list (caller may choose to overwrite)
+        return []
+    except Exception:
+        return []
+
+
+def _atomic_write_json(path, obj):
+    """Write JSON atomically and fsync the directory entry. Uses flock when available."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    dirpath = os.path.dirname(path) or '.'
+    # write to temp file in same dir then os.replace
+    fd, tmp_path = tempfile.mkstemp(dir=dirpath)
+    try:
+        with os.fdopen(fd, 'w') as tf:
+            if _HAS_FCNTL:
+                try:
+                    fcntl.flock(tf.fileno(), fcntl.LOCK_EX)
+                except Exception:
+                    pass
+            json.dump(obj, tf, indent=2)
+            tf.flush()
+            os.fsync(tf.fileno())
+            if _HAS_FCNTL:
+                try:
+                    fcntl.flock(tf.fileno(), fcntl.LOCK_UN)
+                except Exception:
+                    pass
+        # atomic replace
+        os.replace(tmp_path, path)
+        # ensure directory entry persisted
+        try:
+            dirfd = os.open(dirpath, os.O_DIRECTORY)
+            try:
+                os.fsync(dirfd)
+            finally:
+                os.close(dirfd)
+        except Exception:
+            pass
+    finally:
+        if os.path.exists(tmp_path):
+            try: os.remove(tmp_path)
+            except Exception: pass
 
 # User management functions (JSON file-based)
 def load_users():
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r') as f:
-            try:
-                # Load users as a list of dictionaries
-                users_data = json.load(f)
-                if isinstance(users_data, dict):
-                    # If it's an old format (dict keyed by email), convert to list
-                    return list(users_data.values())
-                return users_data
-            except json.JSONDecodeError:
-                logger.error("Error decoding users.json, returning empty list")
-                return []
-    return []
+    """
+    Load users from USERS_FILE.
+    Returns a list (never None). If file is corrupt, returns [].
+    """
+    ensure_file_exists(USERS_FILE)
+    data = _atomic_read_json(USERS_FILE)
+    # If file contained a dict keyed by email (older format), convert to list
+    if isinstance(data, dict):
+        try:
+            users_list = list(data.values())
+            save_users(users_list)
+            return users_list
+        except Exception:
+            return []
+    if not isinstance(data, list):
+        return []
+    return data
+
 
 def save_users(users):
-    with open(USERS_FILE, 'w') as f:
-        json.dump(users, f, indent=2)
+    """
+    Save the list of users to USERS_FILE. Overwrites atomically.
+    """
+    if users is None:
+        users = []
+    # normalize: always save a list
+    if not isinstance(users, list):
+        raise ValueError("users must be a list")
+    _atomic_write_json(USERS_FILE, users)
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def find_user_by_email(email):
-    """Find a user by email address"""
+    """
+    Return the user dict if found, else None.
+    Case-sensitive match (email equality). If you want case-insensitive,
+    compare .lower() versions.
+    """
+    if not email:
+        return None
     users = load_users()
     for user in users:
         if user.get('email') == email:
@@ -121,10 +240,9 @@ def find_user_by_email(email):
     return None
 
 def find_user_by_google_id(google_id):
-    """Find a user by Google ID"""
+    """Find a user by Google ID or return None if not found."""
     if not google_id:
         return None
-        
     users = load_users()
     for user in users:
         if user.get('google_id') == google_id:
@@ -338,49 +456,64 @@ logger.info(f"Sending emails from: {FROM_EMAIL}")
 
 # CSV history functions
 def get_csv_history():
-    """Get the CSV upload history from JSON file"""
-    path = app.config['HISTORY_FILE']
-    if not os.path.exists(path):
+    """
+    Return the full history (list of all users' history entries).
+    Always returns a list.
+    """
+    ensure_file_exists(app.config['HISTORY_FILE'])
+    data = _atomic_read_json(app.config['HISTORY_FILE'])
+    if not isinstance(data, list):
         return []
-    try:
-        with open(path, 'r') as f:
-            history_data = json.load(f)
-        if not isinstance(history_data, list):
-            return []
-        return history_data
-    except json.JSONDecodeError:
-        logger.error("Error decoding history file, returning empty history")
-        return []
+    return data
+
 
 def save_csv_history(history):
-    """Save the CSV upload history to JSON file"""
-    with open(app.config['HISTORY_FILE'], 'w') as f:
-        json.dump(history, f, indent=2)
+    """
+    Save the full CSV history (list) to HISTORY_FILE atomically.
+    """
+    if history is None:
+        history = []
+    if not isinstance(history, list):
+        raise ValueError("history must be a list")
+    _atomic_write_json(app.config['HISTORY_FILE'], history)
 
 
 def add_csv_to_history(filename, original_filename, valid_count, invalid_count, sender_email=None):
-    """Add a CSV file to the upload history"""
+    """
+    Append a history entry for the currently logged-in user (session must have 'email').
+    Returns the new entry dict on success, or None if no user in session.
+    """
+    if 'email' not in session:
+        logger.warning("Attempt to add history while not logged-in; skipping.")
+        return None
+
+    user_email = session.get('email')
     history = get_csv_history()
-    
-    # Create new history entry
+
+    # generate incremental id (keep unique even across concurrent writes)
+    next_id = 1
+    if history:
+        try:
+            next_id = max(int(entry.get('id', 0)) for entry in history) + 1
+        except Exception:
+            # fallback
+            next_id = len(history) + 1
+
     new_entry = {
-        'id': len(history) + 1,
+        'id': next_id,
         'filename': filename,
         'original_filename': original_filename,
         'upload_date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'valid_emails': valid_count,
-        'invalid_emails': invalid_count,
-        'total_emails': valid_count + invalid_count,
+        'valid_emails': int(valid_count) if valid_count is not None else 0,
+        'invalid_emails': int(invalid_count) if invalid_count is not None else 0,
+        'total_emails': (int(valid_count) if valid_count is not None else 0) + (int(invalid_count) if invalid_count is not None else 0),
         'sent_from': sender_email,
-        'user_email': session.get('email')  # Link history to logged-in user
+        'user_email': user_email
     }
-    
-    # Add to history and save
+
     history.append(new_entry)
     save_csv_history(history)
-    
     return new_entry
-
 
 # Helper function to check if file extension is allowed
 def allowed_file(filename):
@@ -412,7 +545,7 @@ def is_valid_email(email):
     return re.match(pattern, email) is not None
 
 # Helper function to send email using SendGrid API
-def send_email_with_sendgrid(to_email, subject, message_text, from_email=None, api_key=None, attachments=None):
+def send_email_with_sendgrid(to_email, subject, message_text, from_email=None, attachments=None):
     """
     Send an email using SendGrid API.
     Always sends from the verified sender, sets reply-to to the provided form email.
@@ -557,7 +690,7 @@ def upload_file():
             logger.info(f"CSV file read with columns: {df.columns.tolist()}")
             
             # Check if the CSV has an email column
-            email_columns = [col for col in df.columns if 'email' or 'email address' in str(col).lower()]
+            email_columns = [col for col in df.columns if 'email' in str(col).lower() or 'email address' in str(col).lower()]
             
             # If no email column found and we have at least one column, assume first column is emails
             if not email_columns and len(df.columns) > 0:
@@ -631,7 +764,6 @@ def upload_file():
 @app.route('/send', methods=['POST'])
 @login_required
 def send_emails():
-    sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
 
     logger.debug(f"Received /send POST with form keys: {list(request.form.keys())}")
     logger.debug(f"Form values: {dict(request.form)}")
@@ -639,7 +771,7 @@ def send_emails():
 
     try:
         # 🔒 Ensure API key exists
-        if not sendgrid_api_key:
+        if not SENDGRID_API_KEY:
             logger.error("SendGrid API key not configured")
             return jsonify({
                 'success': False, 

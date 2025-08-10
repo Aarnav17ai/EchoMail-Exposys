@@ -1021,3 +1021,129 @@ padding: 10px 20px;
         border-top: none;
     }
 }
+
+/* --- Navbar layout fix --- */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #0b182c; /* adjust to your theme */
+    padding: 0.5rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    min-height: 60px;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo {
+    height: 40px;
+    width: auto;
+}
+
+.logo-text {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: white;
+}
+
+.main-nav {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.main-nav ul {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 1rem;
+}
+
+.main-nav li {
+    white-space: nowrap;
+}
+
+.main-nav a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: white;
+    text-decoration: none;
+    padding: 0.4rem 0.6rem;
+}
+
+.main-nav a:hover,
+.main-nav .active a {
+    background-color: #333;
+    border-radius: 4px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+}
+
+.btn-logout {
+    background-color: #e74c3c;
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.btn-logout:hover {
+    background-color: #c0392b;
+}
+
+/* Prevent wrapping on smaller screens */
+@media (max-width: 600px) {
+    .main-nav ul {
+        gap: 0.6rem;
+    }
+    .logo-text {
+        font-size: 1.1rem;
+    }
+}
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #0b182c;
+    padding: 0.75rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.main-nav ul {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.main-nav li a {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+}

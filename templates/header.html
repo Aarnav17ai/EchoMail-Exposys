@@ -1,0 +1,26 @@
+<div class="app-header">
+    <div class="logo-container">
+        <img src="{{ url_for('static', filename='images/echomail-logo.png') }}" alt="EchoMail Logo" class="logo">
+        <span class="logo-text">EchoMail</span>
+    </div>
+    <nav class="main-nav">
+        <ul>
+            <li class="{% if request.endpoint == 'index' %}active{% endif %}">
+                <a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
+            </li>
+            <li class="{% if request.endpoint == 'upload_page' %}active{% endif %}">
+                <a href="{{ url_for('upload_page') }}"><i class="fas fa-upload"></i> Upload</a>
+            </li>
+            <li class="{% if request.endpoint == 'history_page' %}active{% endif %}">
+                <a href="{{ url_for('history_page') }}"><i class="fas fa-history"></i> History</a>
+            </li>
+        </ul>
+    </nav>
+    <div class="header-actions">
+        {% if session.get('email') %}
+            <a href="{{ url_for('logout') }}" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        {% endif %}
+    </div>
+</div>
